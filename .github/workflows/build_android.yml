@@ -1,9 +1,9 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch:          # handmatig starten via Actions
+  workflow_dispatch:
   push:
-    branches: [ "main" ]      # ook automatisch bij commits op main
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -18,37 +18,37 @@ jobs:
         with:
           python-version: "3.10"
 
-      # 1) Android SDK/NDK klaarzetten (NDK 25.x is stabiel met p4a)
+      # 1) Android SDK/NDK klaarzetten
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           api-level: 31
-          ndk: 25.1.8937393
           cmdline-tools-version: latest
 
-      # 2) Licenties accepteren + stabiele build-tools/platform installeren
+      # 2) Licenties accepteren + vereiste packages (incl. NDK 25.1.8937393)
       - name: Accept licenses & install required packages
         run: |
           yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-31" "build-tools;35.0.0"
+          sdkmanager "platform-tools" "platforms;android-31" "build-tools;35.0.0" "ndk;25.1.8937393"
 
-      # 3) Exporteer env en zorg dat aidl in PATH zit
-      - name: Export Android env
+      # 3) Zet env-vars expliciet naar SDK + NDK 25.1.8937393 en zorg dat aidl in PATH zit
+      - name: Export Android env (SDK/NDK)
         run: |
-          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
-          echo "ANDROIDNDK=$ANDROID_NDK_HOME" >> $GITHUB_ENV
-          echo "PATH=$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/35.0.0:$PATH" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "ANDROIDSDK=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/25.1.8937393" >> $GITHUB_ENV
+          echo "ANDROIDNDK=/usr/local/lib/android/sdk/ndk/25.1.8937393" >> $GITHUB_ENV
+          echo "PATH=/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/build-tools/35.0.0:/usr/local/lib/android/sdk/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
 
-      # 4) Link vooraf geïnstalleerde SDK/NDK naar Buildozer-paden
+      # 4) (optioneel) symlink SDK/NDK naar paden die Buildozer gebruikt
       - name: Link SDK/NDK into .buildozer tree
         run: |
           mkdir -p .buildozer/android/platform
-          ln -sfn "$ANDROID_SDK_ROOT" .buildozer/android/platform/android-sdk
-          ln -sfn "$ANDROID_NDK_HOME" .buildozer/android/platform/android-ndk
+          ln -sfn "/usr/local/lib/android/sdk" .buildozer/android/platform/android-sdk
+          ln -sfn "/usr/local/lib/android/sdk/ndk/25.1.8937393" .buildozer/android/platform/android-ndk
 
-      # 5) OS dependencies + Buildozer (incl. autotools fixes)
+      # 5) OS-deps + Buildozer (incl. autotools fixes)
       - name: Install system deps & Buildozer
         run: |
           sudo apt update
@@ -62,14 +62,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      # 6) (optioneel) assets genereren; faalt niet als Pillow ontbreekt
+      # 6) (optioneel) assets genereren
       - name: Generate assets (optional)
         run: |
           python make_assets.py || true
           ls -la assets || true
           ls -la sounds || true
 
-      # 7) Build APK
+      # 7) Build APK — nu met juiste SDK/NDK paden
       - name: Build debug APK
         env:
           USE_SDK_WRAPPER: "1"
