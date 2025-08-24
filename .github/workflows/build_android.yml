@@ -1,9 +1,9 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:          # handmatig starten via Actions
   push:
-    branches: [ "main" ]
+    branches: [ "main" ]      # ook automatisch bij commits op main
 
 jobs:
   build:
@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      # 1) Android SDK/NDK
+      # 1) Android SDK/NDK klaarzetten (NDK 25.x is stabiel met p4a)
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -26,83 +26,59 @@ jobs:
           ndk: 25.1.8937393
           cmdline-tools-version: latest
 
-      # 2) Licenties + stabiele build-tools/platform
-      - name: Accept licenses & install SDK packages
+      # 2) Licenties accepteren + stabiele build-tools/platform installeren
+      - name: Accept licenses & install required packages
         run: |
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-31" "build-tools;35.0.0"
 
-      # 3) Export env + PATH (inclusief cmdline-tools)
+      # 3) Exporteer env en zorg dat aidl in PATH zit
       - name: Export Android env
         run: |
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
           echo "ANDROIDNDK=$ANDROID_NDK_HOME" >> $GITHUB_ENV
-          echo "PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/35.0.0:$PATH" >> $GITHUB_ENV
+          echo "PATH=$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/35.0.0:$PATH" >> $GITHUB_ENV
 
-      # 4) Compat: maak oud tools/bin pad met symlinks naar cmdline-tools
-      - name: SDK tools compatibility shim
-        run: |
-          mkdir -p "$ANDROID_SDK_ROOT/tools/bin"
-          for t in sdkmanager avdmanager; do
-            if [ ! -e "$ANDROID_SDK_ROOT/tools/bin/$t" ]; then
-              ln -s "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/$t" "$ANDROID_SDK_ROOT/tools/bin/$t"
-            fi
-          done
-
-      # 5) Link SDK/NDK naar de paden die Buildozer verwacht
+      # 4) Link vooraf geïnstalleerde SDK/NDK naar Buildozer-paden
       - name: Link SDK/NDK into .buildozer tree
         run: |
           mkdir -p .buildozer/android/platform
           ln -sfn "$ANDROID_SDK_ROOT" .buildozer/android/platform/android-sdk
           ln -sfn "$ANDROID_NDK_HOME" .buildozer/android/platform/android-ndk
 
-      # 6) OS deps + Buildozer
+      # 5) OS dependencies + Buildozer (incl. autotools fixes)
       - name: Install system deps & Buildozer
         run: |
           sudo apt update
-          sudo apt install -y git zip unzip openjdk-17-jdk autoconf automake libtool pkg-config cmake
+          sudo apt install -y \
+            build-essential \
+            autoconf automake libtool pkg-config cmake m4 gettext \
+            libffi-dev libssl-dev zlib1g-dev \
+            libbz2-dev libreadline-dev libsqlite3-dev \
+            libncurses5-dev libncursesw5-dev liblzma-dev \
+            git zip unzip openjdk-17-jdk
           python -m pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      # 7) (optioneel) je eigen assets genereren
+      # 6) (optioneel) assets genereren; faalt niet als Pillow ontbreekt
       - name: Generate assets (optional)
         run: |
           python make_assets.py || true
           ls -la assets || true
           ls -la sounds || true
 
-      # 8) Schoon + build met log capture
-      - name: Clean previous build
-        run: |
-          buildozer android clean || true
-
-      - name: Build debug APK (capture logs)
+      # 7) Build APK
+      - name: Build debug APK
         env:
           USE_SDK_WRAPPER: "1"
         run: |
-          set -o pipefail
-          buildozer -v android debug 2>&1 | tee buildozer_ci.log
+          buildozer -v android debug
 
-      # 9) Upload APK (bij succes)
+      # 8) Upload APK
       - name: Upload APK artifact
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: DiverseyFlappy-APK
           path: bin/*.apk
-
-      # 10) Altijd de logs uploaden
-      - name: Upload Buildozer logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: buildozer-logs
-          path: |
-            buildozer_ci.log
-            .buildozer/**/*.log
-            .buildozer/android/platform/**/install*.txt
-            .buildozer/android/platform/**/error*.txt
-            .buildozer/android/platform/**/stdout*.txt
-            .buildozer/android/platform/**/stderr*.txt
