@@ -18,44 +18,55 @@ jobs:
         with:
           python-version: "3.10"
 
-      # Android SDK + licenties + build-tools
+      # 1) Android SDK klaarzetten
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           api-level: 31
-          cmake: "3.22.1"
           ndk: 25.1.8937393
           cmdline-tools-version: latest
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses
-
-      - name: Install required SDK packages
+      # 2) Licenties accepteren + stabiele build-tools en platform installeren
+      - name: Accept licenses and install packages
         run: |
-          sdkmanager "platform-tools" "platforms;android-31" "build-tools;35.0.0"
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-31" "build-tools;33.0.2"
 
+      # 3) Export variabelen zodat Buildozer deze SDK/NDK gebruikt
+      - name: Export Android env
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+          echo "ANDROIDNDK=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+
+      # 4) OS dependencies
       - name: Install system deps
         run: |
           sudo apt update
           sudo apt install -y git zip unzip openjdk-17-jdk autoconf automake libtool pkg-config cmake
 
-      - name: Install Buildozer (Python)
+      # 5) Buildozer
+      - name: Install Buildozer
         run: |
           python -m pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      - name: Generate assets (optional)
+      # 6) (optioneel) assets genereren
+      - name: Generate assets
         run: |
           python make_assets.py || true
           ls -la assets || true
           ls -la sounds || true
 
+      # 7) Build APK met vooraf geïnstalleerde SDK
       - name: Build debug APK
         env:
-          USE_SDK_WRAPPER: "1"        # laat buildozer sdkmanager gebruiken
+          USE_SDK_WRAPPER: "1"
         run: |
           buildozer -v android debug
 
+      # 8) Upload artefact (APK)
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
