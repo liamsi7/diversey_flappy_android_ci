@@ -1,9 +1,9 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:          # handmatig starten via Actions
   push:
-    branches: [ "main" ]
+    branches: [ "main" ]      # draait ook automatisch bij commits op main
 
 jobs:
   build:
@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      # 1) Android SDK klaarzetten
+      # 1) Android SDK/NDK klaarzetten (NDK 25.x werkt stabiel met python-for-android)
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -27,46 +27,50 @@ jobs:
           cmdline-tools-version: latest
 
       # 2) Licenties accepteren + stabiele build-tools en platform installeren
-      - name: Accept licenses and install packages
+      - name: Accept licenses & install required packages
         run: |
           yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-31" "build-tools;33.0.2"
+          sdkmanager "platform-tools" "platforms;android-31" "build-tools;35.0.0"
 
-      # 3) Export variabelen zodat Buildozer deze SDK/NDK gebruikt
+      # 3) Exporteer variabelen zodat Buildozer deze SDK/NDK gebruikt (en zorg dat aidl in PATH zit)
       - name: Export Android env
         run: |
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
           echo "ANDROIDNDK=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+          echo "PATH=$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/35.0.0:$PATH" >> $GITHUB_ENV
 
-      # 4) OS dependencies
-      - name: Install system deps
+      # 4) Link vooraf geïnstalleerde SDK/NDK naar de paden die Buildozer probeert te gebruiken
+      - name: Link SDK/NDK into .buildozer tree
+        run: |
+          mkdir -p .buildozer/android/platform
+          ln -sfn "$ANDROID_SDK_ROOT" .buildozer/android/platform/android-sdk
+          ln -sfn "$ANDROID_NDK_HOME" .buildozer/android/platform/android-ndk
+
+      # 5) OS dependencies + Buildozer
+      - name: Install system deps & Buildozer
         run: |
           sudo apt update
           sudo apt install -y git zip unzip openjdk-17-jdk autoconf automake libtool pkg-config cmake
-
-      # 5) Buildozer
-      - name: Install Buildozer
-        run: |
           python -m pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      # 6) (optioneel) assets genereren
-      - name: Generate assets
+      # 6) (optioneel) assets genereren; faalt niet indien Pillow ontbreekt
+      - name: Generate assets (optional)
         run: |
           python make_assets.py || true
           ls -la assets || true
           ls -la sounds || true
 
-      # 7) Build APK met vooraf geïnstalleerde SDK
+      # 7) Bouw APK met wrapper (gebruikt nu de gelinkte SDK)
       - name: Build debug APK
         env:
           USE_SDK_WRAPPER: "1"
         run: |
           buildozer -v android debug
 
-      # 8) Upload artefact (APK)
+      # 8) Upload de APK als artifact
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
