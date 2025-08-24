@@ -21,23 +21,21 @@ presplash.filename = assets/presplash.png
 # --- Python requirements ---
 requirements = python3,kivy,pillow
 
-# --- Android instellingen (let op: ABSOLUTE PADEN, geen $ENV) ---
+# --- Android instellingen (LET OP: absolute paden, geen $ENV) ---
 android.api = 31
 android.minapi = 21
 
-# Gebruik stabiele NDK 25b
+# Stabiele NDK
 android.ndk = 25b
 
-# >>> BELANGRIJK: absolute paden ivm Buildozer variabele-expansie <<<
-# Dit is waar setup-android de SDK neerzet op GitHub runners:
+# Forceer exacte SDK/NDK paden (GitHub runner-locaties)
 android.sdk_path = /usr/local/lib/android/sdk
-# Zet de NDK-path expliciet naar de 25.1.8937393 map:
 android.ndk_path = /usr/local/lib/android/sdk/ndk/25.1.8937393
 
 # Architecturen
 android.archs = arm64-v8a, armeabi-v7a
 
-# Licenties niet interactief
+# Licenties non-interactive
 android.accept_sdk_license = True
 
 # Permissies (voeg toe indien nodig)
