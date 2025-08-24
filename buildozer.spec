@@ -1,53 +1,41 @@
 [app]
 
-# -------------------------
-# Algemene app informatie
-# -------------------------
+# --- App info ---
 title = Diversey Flappy
 package.name = diverseyflappy
 package.domain = org.example
 
-# -------------------------
-# Code
-# -------------------------
+# --- Code ---
 source.dir = .
 source.main = main.py
 
-# -------------------------
-# Versie en scherm
-# -------------------------
+# --- Versie & scherm ---
 version = 1.0
 orientation = portrait
 fullscreen = 1
 
-# -------------------------
-# Assets (nu uitgeschakeld zodat je geen icon/presplash nodig hebt tijdens debuggen)
-# icon.filename =
-# presplash.filename =
+# --- Icon/presplash (mag leeg/simple png zijn) ---
+icon.filename = assets/icon.png
+presplash.filename = assets/presplash.png
 
-# -------------------------
-# Vereisten
-# -------------------------
+# --- Python requirements ---
 requirements = python3,kivy,pillow
 
-# -------------------------
-# Android instellingen
-# -------------------------
+# --- Android instellingen ---
 android.api = 31
 android.minapi = 21
 android.ndk = 25b
+# Dwing Buildozer om de vooraf geïnstalleerde SDK te gebruiken
+android.sdk_path = $ANDROID_SDK_ROOT
+
+# Architecturen
 android.archs = arm64-v8a, armeabi-v7a
 
-# Forceer stabiele build-tools en accepteer licenties
-android.build_tools_version = 35.0.0
-android.accept_sdk_license = True
+# Permissies (voeg toe indien nodig)
+android.permissions = INTERNET
 
 
 [buildozer]
-
-# -------------------------
-# Buildozer instellingen
-# -------------------------
 log_level = 2
 verbose = True
 bin_dir = bin
