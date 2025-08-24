@@ -14,7 +14,7 @@ version = 1.0
 orientation = portrait
 fullscreen = 1
 
-# --- Icon/presplash (mag simpele png zijn) ---
+# --- Icon/presplash (mag simpele png zijn; anders maak lege png’s aan) ---
 icon.filename = assets/icon.png
 presplash.filename = assets/presplash.png
 
@@ -24,8 +24,6 @@ requirements = python3,kivy,pillow
 # --- Android instellingen (LET OP: absolute paden, geen $ENV) ---
 android.api = 31
 android.minapi = 21
-
-# Stabiele NDK
 android.ndk = 25b
 
 # Forceer exacte SDK/NDK paden (GitHub runner-locaties)
@@ -38,7 +36,7 @@ android.archs = arm64-v8a, armeabi-v7a
 # Licenties non-interactive
 android.accept_sdk_license = True
 
-# Permissies (voeg toe indien nodig)
+# (optioneel) permissies
 android.permissions = INTERNET
 
 
