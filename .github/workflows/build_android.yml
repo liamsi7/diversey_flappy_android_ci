@@ -32,7 +32,7 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-31" "build-tools;35.0.0"
 
-      # 3) Export env + PATH (zodat aidl gevonden wordt)
+      # 3) Export env + PATH (zorg dat aidl in PATH staat)
       - name: Export Android env
         run: |
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
@@ -41,59 +41,36 @@ jobs:
           echo "ANDROIDNDK=$ANDROID_NDK_HOME" >> $GITHUB_ENV
           echo "PATH=$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/35.0.0:$PATH" >> $GITHUB_ENV
 
-      # 4) Link SDK/NDK naar .buildozer tree (Buildozer gebruikt die paden)
+      # 4) Link SDK/NDK naar de paden die Buildozer verwacht
       - name: Link SDK/NDK into .buildozer tree
         run: |
           mkdir -p .buildozer/android/platform
           ln -sfn "$ANDROID_SDK_ROOT" .buildozer/android/platform/android-sdk
           ln -sfn "$ANDROID_NDK_HOME" .buildozer/android/platform/android-ndk
 
-      # 5) OS deps + Buildozer + Pillow (voor placeholders)
+      # 5) OS deps + Buildozer
       - name: Install system deps & Buildozer
         run: |
           sudo apt update
           sudo apt install -y git zip unzip openjdk-17-jdk autoconf automake libtool pkg-config cmake
           python -m pip install --upgrade pip
-          pip install cython==0.29.36 buildozer pillow
+          pip install cython==0.29.36 buildozer
 
-      # 6) Maak placeholder icon/presplash als ze ontbreken
-      - name: Ensure icon/presplash exist
-        run: |
-          python - << 'PY'
-          from pathlib import Path
-          from PIL import Image, ImageDraw, ImageFont
-          assets = Path("assets"); assets.mkdir(exist_ok=True)
-          def make_png(path, w, h, text):
-            if Path(path).exists(): return
-            img = Image.new("RGBA", (w,h), (30,144,255,255))
-            d = ImageDraw.Draw(img)
-            try:
-              f = ImageFont.load_default()
-              tw, th = d.textsize(text, font=f)
-            except Exception:
-              f=None; tw, th = d.textlength(text), 16
-            d.rectangle([10,10,w-10,h-10], outline=(255,255,255,180), width=4)
-            d.text(((w-tw)//2, (h-th)//2), text, fill=(255,255,255,230), font=f)
-            img.save(path)
-          make_png("assets/icon.png", 512, 512, "Diversey\nFlappy")
-          make_png("assets/presplash.png", 800, 480, "Diversey Flappy")
-          PY
-
-      # 7) (optioneel) jouw assets genereren
+      # 6) (optioneel) je eigen assets genereren
       - name: Generate assets (optional)
         run: |
           python make_assets.py || true
           ls -la assets || true
           ls -la sounds || true
 
-      # 8) Build APK
+      # 7) Build APK
       - name: Build debug APK
         env:
           USE_SDK_WRAPPER: "1"
         run: |
           buildozer -v android debug
 
-      # 9) Upload APK
+      # 8) Upload APK
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
