@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      # 1) Android SDK/NDK
+      # Android SDK/NDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -26,13 +26,11 @@ jobs:
           ndk: 25.1.8937393
           cmdline-tools-version: latest
 
-      # 2) Licenties + stabiele build-tools/platform
-      - name: Accept licenses & install required packages
+      - name: Accept licenses & install SDK packages
         run: |
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-31" "build-tools;35.0.0"
 
-      # 3) Export env + PATH (zorg dat aidl in PATH staat)
       - name: Export Android env
         run: |
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
@@ -41,14 +39,12 @@ jobs:
           echo "ANDROIDNDK=$ANDROID_NDK_HOME" >> $GITHUB_ENV
           echo "PATH=$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/35.0.0:$PATH" >> $GITHUB_ENV
 
-      # 4) Link SDK/NDK naar de paden die Buildozer verwacht
       - name: Link SDK/NDK into .buildozer tree
         run: |
           mkdir -p .buildozer/android/platform
           ln -sfn "$ANDROID_SDK_ROOT" .buildozer/android/platform/android-sdk
           ln -sfn "$ANDROID_NDK_HOME" .buildozer/android/platform/android-ndk
 
-      # 5) OS deps + Buildozer
       - name: Install system deps & Buildozer
         run: |
           sudo apt update
@@ -56,23 +52,43 @@ jobs:
           python -m pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      # 6) (optioneel) je eigen assets genereren
+      # (optioneel) jouw asset-script; mag falen zonder de build te stoppen
       - name: Generate assets (optional)
         run: |
           python make_assets.py || true
           ls -la assets || true
           ls -la sounds || true
 
-      # 7) Build APK
-      - name: Build debug APK
+      # Schoon build + volledige log capture
+      - name: Clean previous build
+        run: |
+          buildozer android clean || true
+
+      - name: Build debug APK (capture logs)
         env:
           USE_SDK_WRAPPER: "1"
         run: |
-          buildozer -v android debug
+          set -o pipefail
+          buildozer -v android debug 2>&1 | tee buildozer_ci.log
 
-      # 8) Upload APK
+      # APK uploaden
       - name: Upload APK artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: DiverseyFlappy-APK
           path: bin/*.apk
+
+      # ALTIJD de logs uploaden (ook bij failure)
+      - name: Upload Buildozer logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildozer-logs
+          path: |
+            buildozer_ci.log
+            .buildozer/**/*.log
+            .buildozer/android/platform/**/install*.txt
+            .buildozer/android/platform/**/error*.txt
+            .buildozer/android/platform/**/stdout*.txt
+            .buildozer/android/platform/**/stderr*.txt
