@@ -56,19 +56,22 @@ jobs:
           ln -sfn "/usr/local/lib/android/sdk/ndk/25.1.8937393" .buildozer/android/platform/android-ndk
 
       # 6) OS-deps + Buildozer + python-for-android (gepinnd) + autotools fix
-      - name: Install system deps & Buildozer
+        - name: Install system deps & Buildozer
         run: |
           sudo apt update
           sudo apt install -y \
             build-essential \
-            autoconf automake libtool pkg-config cmake m4 gettext \
+            autoconf automake libtool libtool-bin pkg-config cmake m4 gettext texinfo gperf \
             libffi-dev libssl-dev zlib1g-dev \
             libbz2-dev libreadline-dev libsqlite3-dev \
             libncurses5-dev libncursesw5-dev liblzma-dev \
             git zip unzip openjdk-17-jdk
+          # Zorgen dat aclocal libtool-macros vindt
+          echo "ACLOCAL_PATH=/usr/share/aclocal" >> $GITHUB_ENV
           python -m pip install --upgrade pip
           pip install cython==0.29.36 buildozer
           pip install "python-for-android==2024.1.21"
+
 
       # 7) (optioneel) assets genereren
       - name: Generate assets (optional)
