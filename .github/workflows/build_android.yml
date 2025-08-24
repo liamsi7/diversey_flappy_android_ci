@@ -1,0 +1,50 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:   # handmatig starten
+  push:
+    branches: [ "main" ]  # draait ook bij elke commit op main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install system deps
+        run: |
+          sudo apt update
+          sudo apt install -y git zip unzip openjdk-17-jdk autoconf automake libtool pkg-config cmake
+
+      - name: Install Python deps (Buildozer)
+        run: |
+          python -m pip install --upgrade pip
+          pip install cython==0.29.36 buildozer
+
+      # Optioneel: assets genereren (faalt niet als Pillow ontbreekt)
+      - name: Generate assets
+        run: |
+          python make_assets.py || true
+          ls -la assets || true
+          ls -la sounds || true
+
+      # De eigenlijke build
+      - name: Build debug APK
+        env:
+          USE_SDK_WRAPPER: "1"
+        run: |
+          buildozer -v android debug
+
+      # APK uploaden als artifact (v4!)
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DiverseyFlappy-APK
+          path: bin/*.apk
