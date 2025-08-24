@@ -41,22 +41,22 @@ jobs:
           echo "ANDROIDNDK=/usr/local/lib/android/sdk/ndk/25.1.8937393" >> $GITHUB_ENV
           echo "PATH=/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/build-tools/35.0.0:/usr/local/lib/android/sdk/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
 
-      # 4) Compat shim: legacy tools/bin -> cmdline-tools/latest/bin
+      # 4) Compat shim: legacy tools/bin -> cmdline-tools/latest/bin (Buildozer verwacht soms dit pad)
       - name: Create legacy tools/bin shim for sdkmanager
         run: |
           mkdir -p /usr/local/lib/android/sdk/tools/bin
           ln -sfn /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager /usr/local/lib/android/sdk/tools/bin/sdkmanager
           ln -sfn /usr/local/lib/android/sdk/cmdline-tools/latest/bin/avdmanager /usr/local/lib/android/sdk/tools/bin/avdmanager || true
 
-      # 5) Link SDK/NDK naar Buildozer’s verwachte paden
+      # 5) Link SDK/NDK naar Buildozer’s interne paden
       - name: Link SDK/NDK into .buildozer tree
         run: |
           mkdir -p .buildozer/android/platform
           ln -sfn "/usr/local/lib/android/sdk" .buildozer/android/platform/android-sdk
           ln -sfn "/usr/local/lib/android/sdk/ndk/25.1.8937393" .buildozer/android/platform/android-ndk
 
-      # 6) OS-deps + Buildozer + recente python-for-android + autotools fix
-            - name: Install system deps & Buildozer
+      # 6) OS-deps + Buildozer + python-for-android (gepinnd) + autotools fix
+      - name: Install system deps & Buildozer
         run: |
           sudo apt update
           sudo apt install -y \
