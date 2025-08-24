@@ -19,8 +19,7 @@ android.minapi = 21
 android.ndk = 25b
 android.archs = arm64-v8a, armeabi-v7a
 
-[buildozer]
-log_level = 2
-verbose = True
-bin_dir = bin
+# Forceer stabiele build-tools + accepteer licenties
+android.build_tools_version = 35.0.0
+android.accept_sdk_license = True
 
