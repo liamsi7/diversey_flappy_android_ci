@@ -18,20 +18,20 @@ jobs:
         with:
           python-version: "3.10"
 
-      # 1) Android SDK/NDK klaarzetten
+      # 1) Android SDK (cmdline-tools)
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           api-level: 31
           cmdline-tools-version: latest
 
-      # 2) Licenties accepteren + vereiste packages (incl. NDK 25.1.8937393)
+      # 2) Licenties + exacte packages (incl. NDK 25.1.8937393)
       - name: Accept licenses & install required packages
         run: |
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-31" "build-tools;35.0.0" "ndk;25.1.8937393"
 
-      # 3) Zet env-vars expliciet naar SDK + NDK 25.1.8937393 en zorg dat aidl in PATH zit
+      # 3) Env-vars expliciet + PATH (aapt2/sdkmanager)
       - name: Export Android env (SDK/NDK)
         run: |
           echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
@@ -41,14 +41,21 @@ jobs:
           echo "ANDROIDNDK=/usr/local/lib/android/sdk/ndk/25.1.8937393" >> $GITHUB_ENV
           echo "PATH=/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/build-tools/35.0.0:/usr/local/lib/android/sdk/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
 
-      # 4) (optioneel) symlink SDK/NDK naar paden die Buildozer gebruikt
+      # 4) Compat shim: legacy tools/bin -> cmdline-tools/latest/bin
+      - name: Create legacy tools/bin shim for sdkmanager
+        run: |
+          mkdir -p /usr/local/lib/android/sdk/tools/bin
+          ln -sfn /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager /usr/local/lib/android/sdk/tools/bin/sdkmanager
+          ln -sfn /usr/local/lib/android/sdk/cmdline-tools/latest/bin/avdmanager /usr/local/lib/android/sdk/tools/bin/avdmanager || true
+
+      # 5) Link SDK/NDK naar Buildozer’s verwachte paden
       - name: Link SDK/NDK into .buildozer tree
         run: |
           mkdir -p .buildozer/android/platform
           ln -sfn "/usr/local/lib/android/sdk" .buildozer/android/platform/android-sdk
           ln -sfn "/usr/local/lib/android/sdk/ndk/25.1.8937393" .buildozer/android/platform/android-ndk
 
-      # 5) OS-deps + Buildozer (incl. autotools fixes)
+      # 6) OS-deps + Buildozer + recente python-for-android + autotools fix
       - name: Install system deps & Buildozer
         run: |
           sudo apt update
@@ -61,22 +68,23 @@ jobs:
             git zip unzip openjdk-17-jdk
           python -m pip install --upgrade pip
           pip install cython==0.29.36 buildozer
+          pip install --upgrade "python-for-android>=2024.06.03"
 
-      # 6) (optioneel) assets genereren
+      # 7) (optioneel) assets genereren
       - name: Generate assets (optional)
         run: |
           python make_assets.py || true
           ls -la assets || true
           ls -la sounds || true
 
-      # 7) Build APK — nu met juiste SDK/NDK paden
+      # 8) Build APK
       - name: Build debug APK
         env:
           USE_SDK_WRAPPER: "1"
         run: |
           buildozer -v android debug
 
-      # 8) Upload APK
+      # 9) Upload APK
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
