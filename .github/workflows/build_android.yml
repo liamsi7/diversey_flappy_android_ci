@@ -56,7 +56,7 @@ jobs:
           ln -sfn "/usr/local/lib/android/sdk/ndk/25.1.8937393" .buildozer/android/platform/android-ndk
 
       # 6) OS-deps + Buildozer + recente python-for-android + autotools fix
-      - name: Install system deps & Buildozer
+            - name: Install system deps & Buildozer
         run: |
           sudo apt update
           sudo apt install -y \
@@ -68,7 +68,7 @@ jobs:
             git zip unzip openjdk-17-jdk
           python -m pip install --upgrade pip
           pip install cython==0.29.36 buildozer
-          pip install --upgrade "python-for-android>=2024.06.03"
+          pip install "python-for-android==2024.1.21"
 
       # 7) (optioneel) assets genereren
       - name: Generate assets (optional)
